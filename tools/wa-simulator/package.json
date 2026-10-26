@@ -1,0 +1,16 @@
+{
+  "name": "wa-simulator",
+  "version": "1.0.0",
+  "description": "WhatsApp Gateway Simulator untuk AF Blast (Hanya meniru gateway - TIDAK mengirim pesan WhatsApp sungguhan)",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "sim": "node src/server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "qrcode": "^1.5.4"
+  }
+}

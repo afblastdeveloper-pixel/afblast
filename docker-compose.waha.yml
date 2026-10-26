@@ -1,0 +1,51 @@
+version: '3.8'
+
+# ============================================================
+# AF Blast - WAHA (WhatsApp HTTP API) Docker Compose
+# ============================================================
+# Dokumentasi: https://waha.devlikeapro.net/
+#
+# CARA MENJALANKAN:
+#   docker compose -f docker-compose.waha.yml up -d
+#
+# DASHBOARD WAHA:
+#   Buka browser: http://localhost:3000/dashboard
+#   Username: admin
+#   Password: afblast_waha_secret_key_2026
+#
+# UPGRADE KE WAHA PLUS (Multi-Session):
+#   Ganti `image: devlikeapro/waha` menjadi `image: devlikeapro/waha-plus`
+# ============================================================
+
+services:
+  waha:
+    image: devlikeapro/waha
+    container_name: afblast_waha
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      # Keamanan API Key untuk REST API
+      - WAHA_API_KEY=afblast_waha_secret_key_2026
+      
+      # Dashboard Web bawaan WAHA
+      - WAHA_DASHBOARD_ENABLED=true
+      - WAHA_DASHBOARD_USERNAME=admin
+      - WAHA_DASHBOARD_PASSWORD=afblast_waha_secret_key_2026
+      
+      # Engine WhatsApp: NOWEB (Baileys - sangat ringan & hemat RAM)
+      - WHATSAPP_DEFAULT_ENGINE=NOWEB
+      
+      # Webhook Global ke Backend AF Blast
+      - WHATSAPP_HOOK_URL=http://host.docker.internal:4000/api/webhooks/waha
+      - WHATSAPP_HOOK_EVENTS=session.status,message.ack,message
+      
+      # Print QR ke Terminal Log Docker
+      - WAHA_PRINT_QR=true
+    volumes:
+      # Persistent storage untuk sesi login WhatsApp agar tidak hilang saat container restart
+      - waha_sessions_data:/app/.sessions
+
+volumes:
+  waha_sessions_data:
+    name: afblast_waha_sessions_data

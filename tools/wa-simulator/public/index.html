@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AF Blast — WA Gateway Simulator</title>
+  <style>
+    :root {
+      --bg: #0B1220;
+      --card-bg: #111827;
+      --card-border: #1F2937;
+      --text: #F8FAFC;
+      --text-muted: #94A3B8;
+      --primary: #3B82F6;
+      --primary-hover: #2563EB;
+      --success: #10B981;
+      --warning: #F59E0B;
+      --danger: #EF4444;
+      --border-radius: 8px;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      padding: 24px;
+      line-height: 1.5;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--card-border);
+    }
+    .header h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #60A5FA;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .badge-sim {
+      background-color: rgba(245, 158, 11, 0.2);
+      color: #FCD34D;
+      border: 1px solid rgba(245, 158, 11, 0.4);
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .disclaimer-banner {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #FCA5A5;
+      padding: 12px 16px;
+      border-radius: var(--border-radius);
+      margin-bottom: 24px;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+    @media (min-width: 900px) {
+      .grid {
+        grid-template-columns: 350px 1fr;
+      }
+    }
+    .card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--border-radius);
+      padding: 20px;
+    }
+    .card-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .form-group {
+      margin-bottom: 14px;
+    }
+    label {
+      display: block;
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+    input[type="number"], input[type="text"] {
+      width: 100%;
+      background-color: #1E293B;
+      border: 1px solid #334155;
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    input[type="number"]:focus, input[type="text"]:focus {
+      border-color: var(--primary);
+      outline: none;
+    }
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.15s ease;
+      color: white;
+    }
+    .btn-primary { background-color: var(--primary); }
+    .btn-primary:hover { background-color: var(--primary-hover); }
+    .btn-success { background-color: var(--success); }
+    .btn-success:hover { background-color: #059669; }
+    .btn-danger { background-color: var(--danger); }
+    .btn-danger:hover { background-color: #DC2626; }
+    .btn-warning { background-color: var(--warning); color: #000; }
+    .btn-warning:hover { background-color: #D97706; }
+    .btn-secondary { background-color: #374151; }
+    .btn-secondary:hover { background-color: #4B5563; }
+    .btn-sm {
+      padding: 4px 8px;
+      font-size: 11px;
+    }
+    .device-table, .log-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .device-table th, .device-table td,
+    .log-table th, .log-table td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid var(--card-border);
+    }
+    .device-table th, .log-table th {
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .status-connected { background-color: rgba(16, 185, 129, 0.2); color: #34D399; }
+    .status-pending { background-color: rgba(245, 158, 11, 0.2); color: #FBBF24; }
+    .status-disconnected { background-color: rgba(107, 114, 128, 0.2); color: #9CA3AF; }
+    .status-logged_out { background-color: rgba(239, 68, 68, 0.2); color: #F87171; }
+    .actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .log-container {
+      max-height: 380px;
+      overflow-y: auto;
+    }
+    .msg-preview {
+      max-width: 280px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 30px;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+    .meta-tag {
+      font-family: monospace;
+      font-size: 11px;
+      color: #93C5FD;
+    }
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #1E293B;
+      color: #F8FAFC;
+      border: 1px solid var(--primary);
+      padding: 10px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      display: none;
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1>
+          <span>⚡ AF Blast — WhatsApp Gateway Simulator</span>
+          <span class="badge-sim">SIMULATOR LOKAL</span>
+        </h1>
+        <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+          Port: 4100 &bull; Backend: <span id="backendUrlDisplay" class="meta-tag">http://localhost:4000</span> &bull; Status: <span style="color: #34D399;">● Online</span>
+        </p>
+      </div>
+      <div>
+        <button class="btn btn-primary" onclick="createDevicePrompt()">+ Tambah Perangkat</button>
+      </div>
+    </div>
+
+    <div class="disclaimer-banner">
+      <span style="font-size: 18px;">🛡️</span>
+      <div>
+        <strong>LINGKUNGAN SIMULATOR PENGUJIAN:</strong> Layanan ini hanya meniru perilaku API WhatsApp Gateway.
+        <strong>TIDAK ADA pesan WhatsApp sungguhan yang dikirim</strong> ke nomor ponsel mana pun. Aman untuk uji beban & skenario kegagalan.
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- Kolom Kiri: Pengaturan Simulator -->
+      <div class="card">
+        <div class="card-title">
+          <span>⚙️ Pengaturan Simulator</span>
+        </div>
+        <form id="settingsForm" onsubmit="saveSettings(event)">
+          <div class="form-group">
+            <label for="successRate">Tingkat Keberhasilan Pengiriman (Success Rate %)</label>
+            <input type="number" id="successRate" min="0" max="100" value="95" required>
+          </div>
+          <div class="form-group">
+            <label for="deliveredRate">Tingkat Pesan Terkirim (Delivered Rate %)</label>
+            <input type="number" id="deliveredRate" min="0" max="100" value="90" required>
+          </div>
+          <div class="form-group">
+            <label for="readRate">Tingkat Pesan Terbaca (Read Rate %)</label>
+            <input type="number" id="readRate" min="0" max="100" value="40" required>
+          </div>
+          <div class="form-group">
+            <label for="latencyMs">Latensi Jaringan Simulasi (ms)</label>
+            <input type="number" id="latencyMs" min="0" max="10000" value="100" required>
+          </div>
+          <div class="form-group">
+            <label for="rateLimitPerMinute">Batas Rate Limit (Pesan / Menit per Device)</label>
+            <input type="number" id="rateLimitPerMinute" min="1" max="1000" value="30" required>
+          </div>
+          <div class="form-group">
+            <label for="autoLogoutEvery">Logout Otomatis Tiap N Pesan (0 = Nonaktif)</label>
+            <input type="number" id="autoLogoutEvery" min="0" max="10000" value="0" required>
+          </div>
+          <div class="form-group checkbox-group">
+            <input type="checkbox" id="autoPairing" checked>
+            <label for="autoPairing" style="margin-bottom: 0; cursor: pointer;">
+              Otomatis selesai penautan dalam 12 detik setelah QR/Kode diminta
+            </label>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 8px;">
+            Simpan Pengaturan
+          </button>
+        </form>
+      </div>
+
+      <!-- Kolom Kanan: Daftar Device & Log -->
+      <div style="display: flex; flex-direction: column; gap: 24px;">
+        <!-- Daftar Device -->
+        <div class="card">
+          <div class="card-title">
+            <span>📱 Daftar Perangkat WhatsApp Terdaftar (<span id="deviceCount">0</span>)</span>
+            <button class="btn btn-secondary btn-sm" onclick="fetchDevices()">↻ Refresh</button>
+          </div>
+          <div style="overflow-x: auto;">
+            <table class="device-table">
+              <thead>
+                <tr>
+                  <th>ID Perangkat</th>
+                  <th>Nomor</th>
+                  <th>Status</th>
+                  <th>Terkirim</th>
+                  <th>Aksi Kontrol</th>
+                </tr>
+              </thead>
+              <tbody id="deviceTableBody">
+                <tr><td colspan="5" class="empty-state">Memuat perangkat...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Log Pesan Masuk / Keluar -->
+        <div class="card">
+          <div class="card-title">
+            <span>✉️ Log Pesan Gateway (<span id="msgCount">0</span>)</span>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn btn-secondary btn-sm" onclick="clearLogs()">Hapus Log</button>
+              <button class="btn btn-secondary btn-sm" onclick="fetchLogs()">↻ Refresh</button>
+            </div>
+          </div>
+          <div class="log-container">
+            <table class="log-table">
+              <thead>
+                <tr>
+                  <th>Waktu</th>
+                  <th>Device</th>
+                  <th>Tujuan</th>
+                  <th>Isi Pesan</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="logTableBody">
+                <tr><td colspan="5" class="empty-state">Belum ada pesan terkirim</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    let currentApiKey = 'afblast_sim_secret_key_2026';
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.innerText = msg;
+      t.style.display = 'block';
+      setTimeout(() => { t.style.display = 'none'; }, 3000);
+    }
+
+    async function apiRequest(path, options = {}) {
+      const headers = {
+        'Content-Type': 'application/json',
+        'x-api-key': currentApiKey,
+        ...(options.headers || {})
+      };
+      const res = await fetch(path, { ...options, headers });
+      return res;
+    }
+
+    async function fetchConfig() {
+      try {
+        const res = await apiRequest('/api/control/config');
+        if (res.ok) {
+          const data = await res.json();
+          document.getElementById('backendUrlDisplay').innerText = data.backendUrl;
+          if (data.apiKey) currentApiKey = data.apiKey;
+          
+          const s = data.settings;
+          document.getElementById('successRate').value = s.successRate;
+          document.getElementById('deliveredRate').value = s.deliveredRate;
+          document.getElementById('readRate').value = s.readRate;
+          document.getElementById('latencyMs').value = s.latencyMs;
+          document.getElementById('rateLimitPerMinute').value = s.rateLimitPerMinute;
+          document.getElementById('autoLogoutEvery').value = s.autoLogoutEvery;
+          document.getElementById('autoPairing').checked = !!s.autoPairing;
+        }
+      } catch (e) {
+        console.error('Failed to fetch config', e);
+      }
+    }
+
+    async function saveSettings(e) {
+      e.preventDefault();
+      const payload = {
+        successRate: parseInt(document.getElementById('successRate').value, 10),
+        deliveredRate: parseInt(document.getElementById('deliveredRate').value, 10),
+        readRate: parseInt(document.getElementById('readRate').value, 10),
+        latencyMs: parseInt(document.getElementById('latencyMs').value, 10),
+        rateLimitPerMinute: parseInt(document.getElementById('rateLimitPerMinute').value, 10),
+        autoLogoutEvery: parseInt(document.getElementById('autoLogoutEvery').value, 10),
+        autoPairing: document.getElementById('autoPairing').checked,
+      };
+
+      try {
+        const res = await apiRequest('/api/control/settings', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          showToast('Pengaturan simulator berhasil disimpan!');
+        } else {
+          showToast('Gagal menyimpan pengaturan');
+        }
+      } catch (err) {
+        showToast('Error: ' + err.message);
+      }
+    }
+
+    async function fetchDevices() {
+      try {
+        const res = await apiRequest('/api/control/devices');
+        if (res.ok) {
+          const list = await res.json();
+          document.getElementById('deviceCount').innerText = list.length;
+          const tbody = document.getElementById('deviceTableBody');
+          if (list.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Belum ada perangkat terdaftar. Silakan buat perangkat baru.</td></tr>';
+            return;
+          }
+
+          tbody.innerHTML = list.map(dev => {
+            const statusClass = `status-${dev.status || 'pending'}`;
+            return `
+              <tr>
+                <td><span class="meta-tag">${dev.id}</span></td>
+                <td><strong>${dev.phone || '-'}</strong></td>
+                <td><span class="status-badge ${statusClass}">${(dev.status || 'pending').toUpperCase()}</span></td>
+                <td>${dev.sentCount || 0}</td>
+                <td>
+                  <div class="actions">
+                    ${dev.status !== 'connected' ? `
+                      <button class="btn btn-success btn-sm" onclick="completePairing('${dev.id}')" title="Simulasi scan QR atau input kode">
+                        ✓ Selesaikan Penautan
+                      </button>
+                    ` : ''}
+                    ${dev.status === 'connected' ? `
+                      <button class="btn btn-warning btn-sm" onclick="disconnectDevice('${dev.id}')">
+                        ⚡ Putus Jaringan
+                      </button>
+                      <button class="btn btn-danger btn-sm" onclick="forceLogout('${dev.id}')">
+                        🚪 Paksa Logout
+                      </button>
+                    ` : ''}
+                    <button class="btn btn-secondary btn-sm" onclick="deleteDevice('${dev.id}')">
+                      🗑 Hapus
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            `;
+          }).join('');
+        }
+      } catch (err) {
+        console.error('Error fetching devices', err);
+      }
+    }
+
+    async function fetchLogs() {
+      try {
+        const res = await apiRequest('/api/control/logs');
+        if (res.ok) {
+          const logs = await res.json();
+          document.getElementById('msgCount').innerText = logs.length;
+          const tbody = document.getElementById('logTableBody');
+          if (logs.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Belum ada pesan terkirim</td></tr>';
+            return;
+          }
+
+          tbody.innerHTML = logs.map(l => {
+            const time = new Date(l.createdAt).toLocaleTimeString();
+            let statusBadge = `<span class="status-badge status-pending">${l.status}</span>`;
+            if (l.status === 'read') statusBadge = `<span class="status-badge status-connected">READ</span>`;
+            else if (l.status === 'delivered') statusBadge = `<span class="status-badge status-connected">DELIVERED</span>`;
+            else if (l.status === 'sent') statusBadge = `<span class="status-badge status-connected">SENT</span>`;
+            else if (l.status === 'failed') statusBadge = `<span class="status-badge status-logged_out">FAILED</span>`;
+
+            return `
+              <tr>
+                <td style="color: var(--text-muted); font-size: 11px;">${time}</td>
+                <td><span class="meta-tag">${l.deviceId}</span></td>
+                <td><strong>${l.to}</strong></td>
+                <td>
+                  <div class="msg-preview" title="${(l.text || '').replace(/"/g, '&quot;')}">${l.text || '(gambar)'}</div>
+                  ${l.error ? `<div style="color: #F87171; font-size: 11px;">⚠️ ${l.error}</div>` : ''}
+                </td>
+                <td>${statusBadge}</td>
+              </tr>
+            `;
+          }).join('');
+        }
+      } catch (err) {
+        console.error('Error fetching logs', err);
+      }
+    }
+
+    async function createDevicePrompt() {
+      const customId = prompt('Masukkan ID Perangkat (opsional, kosongkan untuk acak):');
+      try {
+        const res = await apiRequest('/api/control/devices', {
+          method: 'POST',
+          body: JSON.stringify({ deviceId: customId || undefined })
+        });
+        if (res.ok) {
+          const d = await res.json();
+          showToast(`Perangkat ${d.deviceId} berhasil dibuat!`);
+          fetchDevices();
+        }
+      } catch (e) {
+        showToast('Gagal membuat perangkat: ' + e.message);
+      }
+    }
+
+    async function completePairing(deviceId) {
+      try {
+        const phone = prompt('Masukkan nomor telepon untuk ditautkan:', '6281234567890');
+        if (!phone) return;
+        const res = await apiRequest(`/api/control/devices/${deviceId}/complete-pair`, {
+          method: 'POST',
+          body: JSON.stringify({ phone })
+        });
+        if (res.ok) {
+          showToast(`Perangkat ${deviceId} berhasil ditautkan! Webhook device.connected dikirim.`);
+          fetchDevices();
+        } else {
+          const err = await res.json();
+          showToast('Gagal: ' + (err.error || 'Terjadi kesalahan'));
+        }
+      } catch (e) {
+        showToast('Error: ' + e.message);
+      }
+    }
+
+    async function disconnectDevice(deviceId) {
+      if (!confirm(`Putus koneksi jaringan untuk perangkat ${deviceId}?`)) return;
+      try {
+        const res = await apiRequest(`/api/control/devices/${deviceId}/disconnect`, { method: 'POST' });
+        if (res.ok) {
+          showToast(`Perangkat ${deviceId} diputus. Webhook device.disconnected dikirim.`);
+          fetchDevices();
+        }
+      } catch (e) {
+        showToast('Error: ' + e.message);
+      }
+    }
+
+    async function forceLogout(deviceId) {
+      if (!confirm(`Paksa logout perangkat ${deviceId} (kebijakan WhatsApp)?`)) return;
+      try {
+        const res = await apiRequest(`/devices/${deviceId}/logout`, { method: 'POST' });
+        if (res.ok) {
+          showToast(`Perangkat ${deviceId} dikeluarkan. Webhook device.logged_out dikirim.`);
+          fetchDevices();
+        }
+      } catch (e) {
+        showToast('Error: ' + e.message);
+      }
+    }
+
+    async function deleteDevice(deviceId) {
+      if (!confirm(`Hapus perangkat ${deviceId}?`)) return;
+      try {
+        const res = await apiRequest(`/devices/${deviceId}`, { method: 'DELETE' });
+        if (res.ok) {
+          showToast(`Perangkat ${deviceId} berhasil dihapus.`);
+          fetchDevices();
+        }
+      } catch (e) {
+        showToast('Error: ' + e.message);
+      }
+    }
+
+    async function clearLogs() {
+      try {
+        await apiRequest('/api/control/logs/clear', { method: 'POST' });
+        fetchLogs();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    // Inisialisasi & polling berkala
+    fetchConfig();
+    fetchDevices();
+    fetchLogs();
+    setInterval(() => {
+      fetchDevices();
+      fetchLogs();
+    }, 2000);
+  </script>
+</body>
+</html>

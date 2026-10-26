@@ -1,0 +1,742 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  user
+  superadmin
+  adminfinance
+  developer
+}
+
+enum StaffStatus {
+  pending
+  approved
+  rejected
+  suspended
+}
+
+model User {
+  id                 Int          @id @default(autoincrement())
+  name               String
+  username           String?      @unique
+  email              String       @unique
+  password           String
+  role               Role         @default(user)
+  staffStatus        StaffStatus? @default(pending) @map("staff_status")
+  approvedById       Int?         @map("approved_by_id")
+  approvedAt         DateTime?    @map("approved_at")
+  rejectionReason    String?      @map("rejection_reason") @db.Text
+  failedLogin        Int          @default(0) @map("failed_login")
+  lockedUntil        DateTime?    @map("locked_until")
+  mustChangePassword Boolean      @default(false) @map("must_change_password")
+  balance            Int          @default(0)
+  fullName           String?      @map("full_name")
+  telegramUsername   String?      @unique @map("telegram_username")
+  telegramChatId     String?      @unique @map("telegram_chat_id")
+  telegramLinkedAt   DateTime?    @map("telegram_linked_at")
+  telegramVerifiedAt DateTime?    @map("telegram_verified_at")
+  tokenVersion       Int          @default(0) @map("token_version")
+  hideFromPaymentChannel Boolean  @default(false) @map("hide_from_payment_channel")
+  referralCode           String?      @unique @map("referral_code")
+  referredById           Int?         @map("referred_by_id")
+  createdAt              DateTime     @default(now()) @map("created_at")
+  updatedAt              DateTime     @updatedAt @map("updated_at")
+
+  referrer               User?                   @relation("UserReferrals", fields: [referredById], references: [id], onDelete: SetNull)
+  referrals              User[]                  @relation("UserReferrals")
+  approver               User?                   @relation("StaffApprovals", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedStaff          User[]                  @relation("StaffApprovals")
+  activityLogs           ActivityLog[]
+  contacts               Contact[]
+  templates              Template[]
+  campaigns              Campaign[]
+  apiSetting             ApiSetting?
+  createdBatches         ContactBatch[]          @relation("BatchCreator")
+  contactSlots           ContactSlot[]
+  devices                Device[]
+  blastLogs              BlastLog[]
+  withdrawals            Withdrawal[]
+  createdBlastCampaigns  BlastCampaign[]         @relation("CampaignCreator")
+  campaignParticipations CampaignParticipation[]
+  telegramLinkTokens     TelegramLinkToken[]
+  resetAudits            ResetAudit[]
+  passwordResetRequests  PasswordResetRequest[]
+  payoutAccount          PayoutAccount?
+  payoutChangeRequests   PayoutChangeRequest[]
+  reviewedPayoutRequests PayoutChangeRequest[]   @relation("PayoutChangeReviewer")
+  supportMessages        SupportMessage[]
+  createdMessageTemplates MessageTemplate[]       @relation("TemplateCreator")
+  backupFiles             BackupFile[]            @relation("UserBackups")
+  riskAcks                RiskAck[]               @relation("UserRiskAcks")
+  deviceRuns              DeviceRun[]
+  earnings                Earning[]
+
+  @@map("users")
+}
+
+model TelegramLinkToken {
+  id        Int       @id @default(autoincrement())
+  userId    Int       @map("user_id")
+  tokenHash String    @unique @map("token_hash")
+  purpose   String    // link | reset
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  requestIp String?   @map("request_ip")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose])
+  @@map("telegram_link_tokens")
+}
+
+model ResetAudit {
+  id        Int      @id @default(autoincrement())
+  userId    Int?     @map("user_id")
+  event     String
+  ip        String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@map("reset_audits")
+}
+
+model PasswordResetRequest {
+  id                  Int       @id @default(autoincrement())
+  userId              Int?      @map("user_id")
+  startTokenHash      String    @unique @map("start_token_hash")
+  codeHash            String?   @map("code_hash")
+  codeSentAt          DateTime? @map("code_sent_at")
+  codeExpiresAt       DateTime? @map("code_expires_at")
+  codeAttempts        Int       @default(0) @map("code_attempts")
+  resendCount         Int       @default(0) @map("resend_count")
+  verifiedAt          DateTime? @map("verified_at")
+  resetTokenHash      String?   @unique @map("reset_token_hash")
+  resetTokenExpiresAt DateTime? @map("reset_token_expires_at")
+  usedAt              DateTime? @map("used_at")
+  requestIp           String?   @map("request_ip")
+  expiresAt           DateTime  @map("expires_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([startTokenHash])
+  @@index([resetTokenHash])
+  @@map("password_reset_requests")
+}
+
+model FeatureFlag {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("feature_flags")
+}
+
+model MenuConfig {
+  id        Int      @id @default(autoincrement())
+  role      Role     @unique
+  items     Json
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("menu_configs")
+}
+
+model AppVersion {
+  id        Int      @id @default(autoincrement())
+  version   String
+  note      String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("app_versions")
+}
+
+model SiteSetting {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique
+  value     String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("site_settings")
+}
+
+model ActivityLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?     @map("user_id")
+  adminName String?  @map("admin_name")
+  action    String
+  target    String?
+  ipAddress String?  @map("ip_address")
+  status    String   @default("success")
+  details   String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("activity_logs")
+}
+
+model Contact {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  name      String
+  phone     String
+  tags      String?
+  optOut    Boolean  @default(false) @map("opt_out")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaignMessages CampaignMessage[]
+
+  @@unique([userId, phone])
+  @@map("contacts")
+}
+
+model Template {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  name      String
+  body      String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaigns Campaign[]
+
+  @@map("templates")
+}
+
+model Campaign {
+  id          Int       @id @default(autoincrement())
+  userId      Int       @map("user_id")
+  templateId  Int?      @map("template_id")
+  name        String
+  status      String    @default("draft")
+  scheduledAt DateTime? @map("scheduled_at")
+  delayMin    Int       @default(5) @map("delay_min")
+  delayMax    Int       @default(15) @map("delay_max")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template    Template?         @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  messages    CampaignMessage[]
+
+  @@map("campaigns")
+}
+
+model CampaignMessage {
+  id            Int       @id @default(autoincrement())
+  campaignId    Int       @map("campaign_id")
+  contactId     Int?      @map("contact_id")
+  phone         String
+  bodyFinal     String    @db.Text @map("body_final")
+  status        String    @default("pending")
+  providerMsgId String?   @map("provider_msg_id")
+  error         String?   @db.Text
+  sentAt        DateTime? @map("sent_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact  Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  @@map("campaign_messages")
+}
+
+model ApiSetting {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique @map("user_id")
+  apiKey    String   @db.Text @map("api_key")
+  deviceId  String?  @map("device_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("api_settings")
+}
+
+model ContactBatch {
+  id            Int           @id @default(autoincrement())
+  title         String
+  description   String?       @db.Text
+  totalContacts Int           @default(0) @map("total_contacts")
+  status        String        @default("active") // active, inactive
+  createdById   Int           @map("created_by_id")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  creator        User            @relation("BatchCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  contacts       PoolContact[]
+  slots          ContactSlot[]
+  blastCampaigns BlastCampaign[]
+
+  @@map("contact_batches")
+}
+
+model PoolContact {
+  id         Int           @id @default(autoincrement())
+  batchId    Int           @map("batch_id")
+  name       String?
+  phone      String
+  createdAt  DateTime      @default(now()) @map("created_at")
+
+  batch      ContactBatch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  blastTasks BlastTask[]
+
+  @@unique([batchId, phone])
+  @@map("pool_contacts")
+}
+
+model ContactSlot {
+  id        Int          @id @default(autoincrement())
+  userId    Int          @map("user_id")
+  batchId   Int          @map("batch_id")
+  status    String       @default("active") // active, ended
+  claimedAt DateTime     @default(now()) @map("claimed_at")
+  endedAt   DateTime?    @map("ended_at")
+
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  batch     ContactBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, batchId])
+  @@map("contact_slots")
+}
+
+model Device {
+  id               Int                     @id @default(autoincrement())
+  userId           Int                     @map("user_id")
+  label            String?
+  slotNumber       Int                     @default(1) @map("slot_number")
+  phone            String?                 @unique
+  linkMethod       String?                 @map("link_method") // qr, code
+  dailyLimit       Int                     @default(200) @map("daily_limit")
+  sentToday        Int                     @default(0) @map("sent_today")
+  sentTodayDate    DateTime?               @map("sent_today_date")
+  consecutiveFails Int                     @default(0) @map("consecutive_fails")
+  deletedAt        DateTime?               @map("deleted_at")
+  externalDeviceId String?                 @map("external_device_id")
+  status           String                  @default("pending") // pending, connected, disconnected, logged_out
+  engineState      String                  @default("idle") @map("engine_state") // idle, running, paused, stopping
+  speedSeconds     Int                     @default(30) @map("speed_seconds")
+  safeMode         Boolean                 @default(false) @map("safe_mode")
+  brutalMode       Boolean                 @default(false) @map("brutal_mode")
+  runLimit         Int?                    @map("run_limit")
+  categoryId       Int?                    @map("category_id")
+  disconnectedReason String?               @map("disconnected_reason") @db.Text
+  lastLogoutAt     DateTime?               @map("last_logout_at")
+  runStartedAt     DateTime?               @map("run_started_at")
+  isSimulated      Boolean                 @default(false) @map("is_simulated")
+  linkedAt         DateTime?               @map("linked_at")
+  lastSeenAt       DateTime?               @map("last_seen_at")
+  createdAt        DateTime                @default(now()) @map("created_at")
+  updatedAt        DateTime                @updatedAt @map("updated_at")
+
+  user             User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category         ContactCategory?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  blastLogs        BlastLog[]
+  participations   CampaignParticipation[]
+  runs             DeviceRun[]
+  earnings         Earning[]
+
+  @@map("devices")
+}
+
+model BlastCampaign {
+  id             Int                     @id @default(autoincrement())
+  title          String
+  imageUrl       String?                 @map("image_url")
+  caption        String                  @db.Text
+  buttonLabel    String?                 @map("button_label")
+  buttonUrl      String?                 @map("button_url")
+  batchId        Int?                    @map("batch_id")
+  categoryId     Int?                    @map("category_id")
+  templateId     Int?                    @map("template_id")
+  status         String                  @default("draft") // draft, running, paused, ended, trash
+  isSimulated    Boolean                 @default(false) @map("is_simulated")
+  totalTarget    Int                     @default(0) @map("total_target")
+  sentCount      Int                     @default(0) @map("sent_count")
+  deliveredCount Int                     @default(0) @map("delivered_count")
+  readCount      Int                     @default(0) @map("read_count")
+  failedCount    Int                     @default(0) @map("failed_count")
+  startAt        DateTime?               @map("start_at")
+  endAt          DateTime?               @map("end_at")
+  startedAt      DateTime?               @map("started_at")
+  endedAt        DateTime?               @map("ended_at")
+  createdById    Int                     @map("created_by_id")
+  createdAt      DateTime                @default(now()) @map("created_at")
+  updatedAt      DateTime                @updatedAt @map("updated_at")
+
+  batch          ContactBatch?           @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  category       ContactCategory?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  template       MessageTemplate?        @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  createdBy      User                    @relation("CampaignCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  participations CampaignParticipation[]
+  tasks          BlastTask[]
+  blastLogs      BlastLog[]
+  messageEvents  MessageEvent[]
+
+  @@map("blast_campaigns")
+}
+
+model CampaignParticipation {
+  id         Int           @id @default(autoincrement())
+  userId     Int           @map("user_id")
+  campaignId Int           @map("campaign_id")
+  deviceId   Int           @map("device_id")
+  status     String        @default("active") // active, paused, left
+  joinedAt   DateTime      @default(now()) @map("joined_at")
+  leftAt     DateTime?     @map("left_at")
+
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaign   BlastCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  device     Device        @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  tasks      BlastTask[]
+
+  @@unique([userId, campaignId])
+  @@map("campaign_participations")
+}
+
+model BlastTask {
+  id              Int                    @id @default(autoincrement())
+  campaignId      Int                    @map("campaign_id")
+  contactId       Int                    @map("contact_id")
+  participationId Int?                   @map("participation_id")
+  status          String                 @default("pending") // pending, processing, sent, failed, skipped
+  error           String?                @db.Text
+  sentAt          DateTime?              @map("sent_at")
+  startedAt       DateTime?              @map("started_at")
+  createdAt       DateTime               @default(now()) @map("created_at")
+  updatedAt       DateTime               @updatedAt @map("updated_at")
+
+  campaign        BlastCampaign          @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact         PoolContact            @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  participation   CampaignParticipation? @relation(fields: [participationId], references: [id], onDelete: SetNull)
+  messageEvents   MessageEvent[]
+
+  @@unique([campaignId, contactId])
+  @@index([campaignId, status])
+  @@map("blast_tasks")
+}
+
+model BlastLog {
+  id            Int            @id @default(autoincrement())
+  userId        Int            @map("user_id")
+  deviceId      Int?           @map("device_id")
+  campaignId    Int?           @map("campaign_id")
+  providerMsgId String?        @map("provider_msg_id")
+  runId         Int?           @map("run_id")
+  phone         String
+  status        String         @default("sent") // sent, failed
+  error         String?        @db.Text
+  createdAt     DateTime       @default(now()) @map("created_at")
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  device        Device?        @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+  campaign      BlastCampaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  run           DeviceRun?     @relation(fields: [runId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([campaignId])
+  @@map("blast_logs")
+}
+
+model WithdrawalPreset {
+  id        Int      @id @default(autoincrement())
+  amount    Int      @unique
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("withdrawal_presets")
+}
+
+model TeamMember {
+  id        Int      @id @default(autoincrement())
+  name      String
+  roleTitle String   @map("role_title")
+  photoUrl  String?  @map("photo_url") @db.Text
+  contact   String?
+  sortOrder Int      @default(0) @map("sort_order")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("team_members")
+}
+
+model Withdrawal {
+  id              Int      @id @default(autoincrement())
+  userId          Int      @map("user_id")
+  amount          Int
+  bank            String?  @default("Bank Transfer")
+  accountNumber   String?  @map("account_number")
+  accountName     String?  @map("account_name")
+  status          String   @default("pending") // pending, approved, rejected, success
+  note            String?  @db.Text
+  rejectionReason String?  @map("rejection_reason") @db.Text
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paymentNotifications PaymentNotification[]
+
+  @@map("withdrawals")
+}
+
+model PaymentNotification {
+  id                Int       @id @default(autoincrement())
+  withdrawalId      Int       @map("withdrawal_id")
+  event             String    // success | processing | rejected
+  status            String    @default("pending") // pending | sent | failed | skipped
+  attempts          Int       @default(0)
+  telegramMessageId String?   @map("telegram_message_id")
+  lastError         String?   @map("last_error") @db.Text
+  payload           Json
+  sentAt            DateTime? @map("sent_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  withdrawal        Withdrawal @relation(fields: [withdrawalId], references: [id], onDelete: Cascade)
+
+  @@unique([withdrawalId, event])
+  @@index([status, createdAt])
+  @@map("payment_notifications")
+}
+
+model PayoutAccount {
+  id                 Int       @id @default(autoincrement())
+  userId             Int       @unique @map("user_id")
+  type               String    // bank | ewallet
+  providerName       String    @map("provider_name")
+  accountNumber      String    @db.Text @map("account_number")
+  accountNumberLast4 String    @map("account_number_last4")
+  holderName         String    @map("holder_name")
+  lockedAt           DateTime? @map("locked_at")
+  withdrawHoldUntil  DateTime? @map("withdraw_hold_until")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("payout_accounts")
+}
+
+model PayoutChangeRequest {
+  id            Int       @id @default(autoincrement())
+  userId        Int       @map("user_id")
+  reason        String    @db.Text
+  requestedType String?   @map("requested_type")
+  status        String    @default("pending") // pending | approved | rejected
+  reviewedById  Int?      @map("reviewed_by_id")
+  reviewNote    String?   @db.Text @map("review_note")
+  reviewedAt    DateTime? @map("reviewed_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviewer      User?     @relation("PayoutChangeReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+  @@map("payout_change_requests")
+}
+
+model SupportMessage {
+  id         Int       @id @default(autoincrement())
+  userId     Int       @map("user_id")
+  text       String    @db.Text
+  status     String    @default("open") // open | answered | closed
+  adminReply String?   @db.Text @map("admin_reply")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@map("support_messages")
+}
+
+model ContactCategory {
+  id             Int             @id @default(autoincrement())
+  name           String          @unique
+  countryCode    String?         @map("country_code")
+  ratePerMessage Int             @default(0) @map("rate_per_message") // tarif reward member, Rupiah
+  totalContacts  Int             @default(0) @map("total_contacts") // counter
+  isActive       Boolean         @default(true) @map("is_active")
+  isSimulated    Boolean                 @default(false) @map("is_simulated")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  targets        Target[]
+  blastCampaigns BlastCampaign[]
+  devices        Device[]
+  deviceRuns     DeviceRun[]
+  stats          CategoryStats?
+
+  @@map("contact_categories")
+}
+
+model CategoryStats {
+  categoryId Int             @id @map("category_id")
+  total      Int             @default(0)
+  none       Int             @default(0)
+  queued     Int             @default(0)
+  active     Int             @default(0)
+  success    Int             @default(0)
+  failed     Int             @default(0)
+  draft      Int             @default(0)
+  optOut     Int             @default(0) @map("opt_out")
+  updatedAt  DateTime        @updatedAt @map("updated_at")
+
+  category   ContactCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@map("category_stats")
+}
+
+model Target {
+  id            Int             @id @default(autoincrement())
+  categoryId    Int             @map("category_id")
+  phone         String          @unique // tanpa +, unik global
+  name          String?
+  queueStatus   String          @default("none") @map("queue_status") // none, queued, active, success, failed, draft
+  consentSource String          @map("consent_source") // String wajib
+  optOut        Boolean         @default(false) @map("opt_out")
+  isSimulated   Boolean         @default(false) @map("is_simulated")
+  lastError     String?         @map("last_error") @db.Text
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+
+  category      ContactCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@index([categoryId, queueStatus, id])
+  @@index([queueStatus])
+  @@map("targets")
+}
+
+model MessageTemplate {
+  id          Int             @id @default(autoincrement())
+  name        String
+  body        String          @db.Text
+  imageUrl    String?         @map("image_url")
+  buttonLabel String?         @map("button_label")
+  buttonUrl   String?         @map("button_url")
+  createdById Int             @map("created_by_id")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  createdBy   User            @relation("TemplateCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  campaigns   BlastCampaign[]
+
+  @@map("message_templates")
+}
+
+model MessageEvent {
+  id            Int            @id @default(autoincrement())
+  campaignId    Int            @map("campaign_id")
+  taskId        Int?           @map("task_id")
+  providerMsgId String         @map("provider_msg_id")
+  status        String         // sent, delivered, read, failed
+  at            DateTime       @default(now())
+  createdAt     DateTime       @default(now()) @map("created_at")
+
+  campaign      BlastCampaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  task          BlastTask?     @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@unique([providerMsgId, status])
+  @@index([campaignId, status])
+  @@map("message_events")
+}
+
+model BackupFile {
+  id          Int      @id @default(autoincrement())
+  type        String   // manual, scheduled, pre-restore
+  filePath    String   @map("file_path")
+  sizeBytes   BigInt   @default(0) @map("size_bytes")
+  sha256      String
+  status      String   @default("completed") // pending, completed, failed
+  createdById Int?     @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  createdBy   User?    @relation("UserBackups", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@map("backup_files")
+}
+
+model RiskAck {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @map("user_id")
+  version    String
+  acceptedAt DateTime @default(now()) @map("accepted_at")
+  ip         String?
+
+  user       User     @relation("UserRiskAcks", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, version])
+  @@index([userId])
+  @@map("risk_acks")
+}
+
+model DeviceRun {
+  id           Int       @id @default(autoincrement())
+  deviceId     Int       @map("device_id")
+  userId       Int       @map("user_id")
+  categoryId   Int       @map("category_id")
+  speedSeconds Int       @default(30) @map("speed_seconds")
+  mode         String    @default("standard") // standard, safe, brutal
+  limit        Int?
+  sent         Int       @default(0)
+  success      Int       @default(0)
+  failed       Int       @default(0)
+  earned       Int       @default(0)
+  isSimulated  Boolean   @default(false) @map("is_simulated")
+  startedAt    DateTime  @default(now()) @map("started_at")
+  endedAt      DateTime? @map("ended_at")
+  stopReason   String?   @map("stop_reason")
+
+  device    Device          @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category  ContactCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  earnings  Earning[]
+  blastLogs BlastLog[]
+
+  @@index([deviceId, startedAt])
+  @@index([userId])
+  @@map("device_runs")
+}
+
+model Earning {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @map("user_id")
+  deviceId    Int?     @map("device_id")
+  runId       Int?     @map("run_id")
+  campaignId  Int?     @map("campaign_id")
+  targetId    Int?     @map("target_id")
+  taskId      Int?     @map("task_id")
+  amount      Int
+  isSimulated Boolean  @default(false) @map("is_simulated")
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  device Device?    @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+  run    DeviceRun? @relation(fields: [runId], references: [id], onDelete: SetNull)
+
+  @@index([userId, isSimulated])
+  @@index([deviceId])
+  @@index([runId])
+  @@map("earnings")
+}
+
